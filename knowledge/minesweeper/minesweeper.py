@@ -1,6 +1,7 @@
 import itertools
 import random
 from collections import deque
+import random
 
 
 class Minesweeper():
@@ -125,7 +126,7 @@ class Sentence():
         Updates internal knowledge representation given the fact that
         a cell is known to be a mine.
         """
-        if cell in self.cells and self.count > 0:
+        if cell in self.cells:
             self.cells.remove(cell)
             self.count -= 1
 
@@ -135,7 +136,7 @@ class Sentence():
         Updates internal knowledge representation given the fact that
         a cell is known to be safe.
         """
-        if cell in self.cells and self.count > 0:
+        if cell in self.cells:
             self.cells.remove(cell)
 
 
@@ -295,13 +296,15 @@ class MinesweeperAI():
             1) have not already been chosen, and
             2) are not known to be mines
         """
-        random_move = None
+        possible_moves = []
 
         for r in range(self.height):
             for c in range(self.width):
                 cur_cell = (r, c)
                 if cur_cell not in self.moves_made and cur_cell not in self.mines:
-                    random_move = cur_cell
-                    break
+                    possible_moves.append(cur_cell)
 
-        return random_move
+        if len(possible_moves) > 0:
+            return random.choice(possible_moves)
+        else:
+            return None
