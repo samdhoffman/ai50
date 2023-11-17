@@ -1,6 +1,5 @@
 import itertools
 import random
-from collections import deque
 import random
 
 
@@ -200,14 +199,19 @@ class MinesweeperAI():
 
         # 2) mark the cell as safe
         self.mark_safe(cell)
-        
+
         # 3) add a new sentence to the AI's knowledge base based on the value of `cell` and `count`
         self.create_knowledge(cell, count)
 
         # 4) mark any additional cells as safe or as mines if it can be concluded based on the AI's knowledge base
-        self.search_for_safes_and_mines()
+        self.add_new_safes_and_mines()
 
-        # 5) add any new sentences to the AI's knowledge base if they can be inferred from existing knowledge
+        next_move = self.make_safe_move()
+
+        if next_move:
+            return next_move
+        else:
+            return self.make_random_move()
 
     def create_knowledge(self, cell, count):
         """
@@ -216,67 +220,43 @@ class MinesweeperAI():
         if it is not, add it to the sentence cells set
         """
         cells = []
+        mine_count = 0
 
-        cell_row = cell[0]
-        cell_col = cell[1]
-
-        # N, S, E, W, NE, NW, SE, SW
-        neighbors = [
-            (cell_row - 1, cell_col),
-            (cell_row + 1, cell_col),
-            (cell_row, cell_col + 1),
-            (cell_row, cell_col - 1),
-            (cell_row - 1, cell_col + 1),
-            (cell_row - 1, cell_col - 1),
-            (cell_row + 1, cell_col + 1),
-            (cell_row + 1, cell_col - 1),
-        ]
-
-        for r in range(self.height):
-            for c in range(self.width):
+        for r in range(cell[0] - 1, cell[0] + 2):
+            for c in range(cell[1] - 1, cell[1] + 2):
                 cur_cell = (r, c)
 
-                if cur_cell not in self.safes and cur_cell not in self.mines and cur_cell in neighbors:
+                if cur_cell in self.mines:
+                    mine_count += 1
+
+                if 0 <= r < self.height and 0 <= c < self.width and cur_cell not in self.safes and cur_cell not in self.mines:
                     cells.append(cur_cell)
 
-        sentence = Sentence(cells, count)
+        sentence = Sentence(cells, count - mine_count)
         self.knowledge.append(sentence)
-        next_move = self.make_safe_move()
 
-        if next_move:
-            return next_move
-        else:
-            return self.make_random_move()
+        # 5) add any new sentences to the AI's knowledge base if they can be inferred from existing knowledge
+        self.generate_knowledge(sentence)
 
-    def search_for_safes_and_mines(self):
+    def add_new_safes_and_mines(self):
         for k in self.knowledge:
-            self.mines.update(k.known_mines())
-            self.safes.update(k.known_safes())
+            for cell in k.known_mines().copy():
+                self.mark_mine(cell)
 
-    def generate_knowledge(self):
-        q = deque([(i, self.knowledge[i]) for i in range(len(self.knowledge))])
+            for cell in k.known_safes().copy():
+                self.mark_safe(cell)
 
-        while q:
-            cur = q.popleft()
-            cur_knowledge, idx = cur[1], cur[0]
+    def generate_knowledge(self, new_sentence):
+        for k in self.knowledge:
+            if k.count > 0 and new_sentence.count > 0 and new_sentence != k:
+                self.create_subset_knowledge(new_sentence, k)
 
-            for i in range(len(self.knowledge)):
-                if i == idx:
-                    continue
-
-                other_knowledge = self.knowledge[i]
-                if len(cur_knowledge) >= len(other_knowledge):
-                    self.create_subset_knowledge(cur_knowledge, other_knowledge, q)
-                else:
-                    self.create_subset_knowledge(other_knowledge, cur_knowledge, q)
-
-    def create_subset_knowledge(self, a, b, q):
+    def create_subset_knowledge(self, a, b):
         if a.cells.issubset(b.cells):
             new_cells = b.cells - a.cells
             new_count = b.count - a.count
-            new_sentence = Sentence(cells=new_cells, count=new_count)
+            new_sentence = Sentence(cells=list(new_cells), count=new_count)
             self.knowledge.append(new_sentence)
-            q.append(new_sentence)
 
     def make_safe_move(self):
         """

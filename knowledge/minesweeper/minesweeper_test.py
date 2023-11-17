@@ -60,7 +60,7 @@ def test_add_knowledge():
     assert(all(cell in new_knowledge.cells for cell in ai.knowledge[0].cells))
     assert(ai.knowledge[0].count) == new_knowledge.count
 
-def test_search_for_safes_and_mines():
+def test_add_new_safes_and_mines():
     ai = m.MinesweeperAI(width=3, height=3)
 
     sentence_1 = m.Sentence(
